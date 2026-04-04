@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spoon Date Joined Checker</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --card: #1a1a24;
+    --accent: #ff4d6d;
+    --accent2: #c9184a;
+    --text: #e8e8f0;
+    --muted: #8888a0;
+    --border: #2a2a3a;
+    --success: #00c896;
+    --input-bg: #12121a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .container { width: 100%; max-width: 520px; }
+  .header { text-align: center; margin-bottom: 36px; }
+  .header h1 {
+    font-size: 1.6rem; font-weight: 700; margin-bottom: 6px;
+    background: linear-gradient(135deg, var(--accent), #ff8fa3);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header p { color: var(--muted); font-size: 0.85rem; }
+  .search-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; margin-bottom: 20px;
+  }
+  .input-group { display: flex; gap: 10px; }
+  .input-group input {
+    flex: 1; background: var(--input-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; color: var(--text);
+    font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+  }
+  .input-group input::placeholder { color: var(--muted); }
+  .input-group input:focus { border-color: var(--accent); }
+  .input-group button {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; border: none; border-radius: 10px; padding: 14px 22px;
+    font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s; white-space: nowrap;
+  }
+  .input-group button:hover { opacity: 0.9; }
+  .input-group button:active { transform: scale(0.97); }
+  .input-group button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .examples { margin-top: 12px; font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
+  .examples code { background: var(--input-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
+  .result-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; animation: slideUp 0.35s ease;
+  }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .profile-header {
+    display: flex; align-items: center; gap: 16px; padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .profile-header img {
+    width: 56px; height: 56px; border-radius: 50%;
+    object-fit: cover; border: 2px solid var(--accent);
+  }
+  .profile-header .info h2 { font-size: 1.1rem; font-weight: 600; }
+  .profile-header .info .tag { color: var(--muted); font-size: 0.82rem; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+  .stat-item { background: var(--card); padding: 18px 24px; text-align: center; }
+  .stat-item .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+  .stat-item .value { font-size: 1.15rem; font-weight: 700; }
+  .date-section { padding: 20px 24px; border-top: 1px solid var(--border); }
+  .date-section .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+  .date-row { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+  .date-row .main-date { font-size: 1.3rem; font-weight: 700; color: var(--success); }
+  .date-row .tz-badge {
+    font-size: 0.68rem; font-weight: 600; color: var(--success);
+    background: rgba(0,200,150,0.12); padding: 2px 8px; border-radius: 4px;
+    vertical-align: middle; margin-left: 6px;
+  }
+  .date-row .sub-date { font-size: 0.82rem; color: var(--muted); }
+  .days-ago { margin-top: 8px; font-size: 0.82rem; color: var(--muted); }
+  .error-box {
+    background: var(--card); border: 1px solid #c9184a44;
+    border-radius: 16px; padding: 20px 24px; text-align: center; animation: slideUp 0.35s ease;
+  }
+  .error-box .emoji { font-size: 1.6rem; margin-bottom: 8px; }
+  .error-box .msg { color: var(--accent); font-weight: 500; }
+  .loading { text-align: center; padding: 40px; color: var(--muted); }
+  .spinner {
+    width: 28px; height: 28px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.7s linear infinite; margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .history { margin-top: 20px; }
+  .history h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px; }
+  .history-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 16px; margin-bottom: 6px;
+    cursor: pointer; transition: border-color 0.2s; font-size: 0.85rem;
+  }
+  .history-item:hover { border-color: var(--accent); }
+  .history-item .name { font-weight: 500; }
+  .history-item .date { color: var(--muted); font-size: 0.78rem; }
+  .share-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; margin-top: 12px; padding: 14px;
+    background: #000; color: #fff; border: 1px solid #333;
+    border-radius: 12px; font-size: 0.92rem; font-weight: 600;
+    cursor: pointer; transition: background 0.2s, transform 0.1s;
+  }
+  .share-btn:hover { background: #1a1a1a; }
+  .share-btn:active { transform: scale(0.97); }
+  .share-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .share-btn svg { width: 18px; height: 18px; fill: #fff; }
+  .footer { text-align: center; margin-top: 40px; font-size: 0.72rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Spoon Date Joined Checker</h1>
+    <p>URLまたはチャンネルIDを入力してください</p>
+  </div>
+  <div class="search-box">
+    <div class="input-group">
+      <input type="text" id="input" placeholder="URL or Channel ID" autofocus="">
+      <button id="btn" onclick="lookup()">検索</button>
+    </div>
+    <div class="examples">
+      例: <code>310119268</code> or <code>https://www.spooncast.net/jp/channel/310119268/tab/home</code>
+    </div>
+  </div>
+  <div id="output"></div>
+  <div id="historyArea"></div>
+  <div class="footer">Spoon Public API を利用しています<br>検索履歴はこの端末のブラウザにのみ保存され、外部には送信されません</div>
+</div>
+<script>
+const input = document.getElementById('input');
+const btn = document.getElementById('btn');
+const output = document.getElementById('output');
+let lastResult = null;
+input.addEventListener('keydown', e => { if (e.key === 'Enter') lookup(); });
+
+function extractId(raw) {
+  raw = raw.trim();
+  if (/^\d+$/.test(raw)) return raw;
+  const m = raw.match(/channel\/(\d+)/);
+  return m ? m[1] : null;
+}
+
+function toJST(iso) {
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  // Convert to JST manually for reliable formatting
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return jst.getUTCFullYear() + '年'
+    + (jst.getUTCMonth() + 1) + '月'
+    + jst.getUTCDate() + '日 '
+    + pad(jst.getUTCHours()) + ':'
+    + pad(jst.getUTCMinutes()) + ':'
+    + pad(jst.getUTCSeconds());
+}
+
+
+function daysAgo(iso) {
+  const diff = Math.floor((new Date() - new Date(iso)) / 86400000);
+  if (diff === 0) return '今日';
+  const y = Math.floor(diff/365), mo = Math.floor((diff%365)/30), da = diff%30;
+  let p = [];
+  if (y > 0) p.push(y + '年');
+  if (mo > 0) p.push(mo + 'ヶ月');
+  if (da > 0) p.push(da + '日');
+  return p.join('') + '前 (' + diff + '日前)';
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function toJSTShort(iso) {
+  const d = new Date(iso);
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return jst.getUTCFullYear() + '/' + pad(jst.getUTCMonth()+1) + '/' + pad(jst.getUTCDate());
+}
+
+function saveHistory(id, nickname, tag, dateJoined) {
+  let h = JSON.parse(localStorage.getItem('spoon_history') || '[]');
+  h = h.filter(x => x.id !== id);
+  h.unshift({ id, nickname, tag, dateJoined, checkedAt: new Date().toISOString() });
+  if (h.length > 10) h.length = 10;
+  localStorage.setItem('spoon_history', JSON.stringify(h));
+  renderHistory();
+}
+
+function renderHistory() {
+  let h = JSON.parse(localStorage.getItem('spoon_history') || '[]');
+  const area = document.getElementById('historyArea');
+  if (!h.length) { area.innerHTML = ''; return; }
+  let html = '<div class="history"><h3>検索履歴</h3>';
+  h.forEach(x => {
+    html += '<div class="history-item" onclick="document.getElementById(\'input\').value=\''+x.id+'\';lookup()"><span class="name">'+escHtml(x.nickname)+' <span style=color:var(--muted)>@'+escHtml(x.tag)+'</span></span><span class="date">'+toJSTShort(x.dateJoined)+'</span></div>';
+  });
+  area.innerHTML = html + '</div>';
+}
+
+async function lookup() {
+  const id = extractId(input.value);
+  if (!id) { output.innerHTML = '<div class="error-box"><div class="emoji">🤔</div><div class="msg">有効なチャンネルIDまたはURLを入力してください</div></div>'; return; }
+  btn.disabled = true;
+  output.innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
+  try {
+    const res = await fetch('https://jp-api.spooncast.net/users/' + id + '/');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.status_code !== 200 || !json.results?.length) throw new Error('ユーザーが見つかりません');
+    const u = json.results[0];
+    lastResult = u;
+    saveHistory(String(u.id), u.nickname || '', u.tag || '', u.date_joined);
+    output.innerHTML = `<div class="result-card">
+      <div class="profile-header">
+        <img src="${escHtml(u.profile_url||'')}" alt="" onerror="this.style.display='none'"/>
+        <div class="info"><h2>${escHtml(u.nickname||'Unknown')}</h2><div class="tag">@${escHtml(u.tag||'')}　|　ID: ${u.id}</div></div>
+      </div>
+      <div class="stats">
+        <div class="stat-item"><div class="label">Followers</div><div class="value">${(u.follower_count||0).toLocaleString()}</div></div>
+        <div class="stat-item"><div class="label">Following</div><div class="value">${(u.following_count||0).toLocaleString()}</div></div>
+      </div>
+      <div class="date-section">
+        <div class="label">Date Joined</div>
+        <div class="date-row">
+          <span class="main-date">${toJST(u.date_joined)}<span class="tz-badge">JST</span></span>
+        </div>
+        <div class="days-ago">${daysAgo(u.date_joined)}</div>
+      </div>
+    </div>
+    <button class="share-btn" onclick="shareToX()">
+      <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      Xでシェア
+    </button>`;
+  } catch(e) {
+    output.innerHTML = '<div class="error-box"><div class="emoji">😢</div><div class="msg">' + escHtml(e.message) + '</div></div>';
+  } finally { btn.disabled = false; }
+}
+
+async function shareToX() {
+  if (!lastResult) return;
+  const shareBtn = document.querySelector('.share-btn');
+  shareBtn.disabled = true;
+  shareBtn.textContent = '画像を生成中...';
+  try {
+    const u = lastResult;
+    const W = 600, H = 340, P = 28, R = 20;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // Background with rounded rect
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, W, H, R);
+    ctx.fill();
+
+    // Accent bar at top
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, '#ff4d6d'); grad.addColorStop(1, '#ff8fa3');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, W, 6, [R, R, 0, 0]);
+    ctx.fill();
+
+    // Profile placeholder (CDN doesn't support CORS)
+    ctx.fillStyle = '#ffe0e6';
+    ctx.beginPath();
+    ctx.arc(P + 30, 50 + 30, 30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff4d6d';
+    ctx.font = 'bold 28px -apple-system, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText((u.nickname || '?')[0], P + 30, 50 + 30);
+
+    // Name & tag
+    const tx = P + 76;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = '#1a1a2e';
+    ctx.font = 'bold 20px -apple-system, sans-serif';
+    ctx.fillText(u.nickname || 'Unknown', tx, 52);
+    ctx.fillStyle = '#888899';
+    ctx.font = '13px -apple-system, sans-serif';
+    ctx.fillText('@' + (u.tag || '') + '  |  ID: ' + u.id, tx, 78);
+
+    // Divider
+    ctx.strokeStyle = '#e8e8f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(P, 124); ctx.lineTo(W - P, 124); ctx.stroke();
+
+    // Stats
+    const statY = 140;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#888899';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.fillText('FOLLOWERS', W * 0.25, statY);
+    ctx.fillText('FOLLOWING', W * 0.75, statY);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.font = 'bold 22px -apple-system, sans-serif';
+    ctx.fillText((u.follower_count || 0).toLocaleString(), W * 0.25, statY + 18);
+    ctx.fillText((u.following_count || 0).toLocaleString(), W * 0.75, statY + 18);
+
+    // Divider
+    ctx.strokeStyle = '#e8e8f0';
+    ctx.beginPath(); ctx.moveTo(P, 192); ctx.lineTo(W - P, 192); ctx.stroke();
+
+    // Date joined label
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#888899';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.fillText('DATE JOINED', P, 210);
+
+    // Date value
+    ctx.fillStyle = '#00a87a';
+    ctx.font = 'bold 24px -apple-system, sans-serif';
+    ctx.fillText(toJST(u.date_joined), P, 232);
+
+    // JST badge
+    const dateW = ctx.measureText(toJST(u.date_joined)).width;
+    const bx = P + dateW + 10, by = 234;
+    ctx.fillStyle = 'rgba(0,168,122,0.12)';
+    ctx.beginPath(); ctx.roundRect(bx, by, 34, 18, 4); ctx.fill();
+    ctx.fillStyle = '#00a87a';
+    ctx.font = 'bold 10px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('JST', bx + 17, by + 5);
+
+    // Days ago
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#888899';
+    ctx.font = '13px -apple-system, sans-serif';
+    ctx.fillText(daysAgo(u.date_joined), P, 270);
+
+    // Footer branding
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#aaaabc';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.fillText('Spoon Date Joined Checker', W - P, H - 18);
+
+    // Export & share
+    const blob = await new Promise((resolve, reject) => {
+      try { canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png'); }
+      catch (e) { reject(e); }
+    });
+    const text = '#SpoonDateJoinedChecker';
+    const file = new File([blob], 'spoon.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ text, files: [file] });
+    } else {
+      // PC: download image + open X intent
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'spoon.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      window.open('https://x.com/intent/tweet?text=' + encodeURIComponent(text), '_blank');
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      window.open('https://x.com/intent/tweet?text=' + encodeURIComponent('#SpoonDateJoinedChecker'), '_blank');
+    }
+  } finally {
+    shareBtn.disabled = false;
+    shareBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> Xでシェア';
+  }
+}
+
+renderHistory();
+</script>
+
+</body></html>
